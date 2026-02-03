@@ -1,0 +1,100 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rally Helper</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1 data-i18n="appTitle">Rally Helper</h1>
+
+<div class="layout">
+
+  <!-- LEFT -->
+  <div class="left">
+
+    <div class="top-controls">
+      <button id="addRally" data-i18n="addRally">Add Rally Creator</button>
+      <input id="search" data-i18n-placeholder="searchPlaceholder" placeholder="Search Rally Creator...">
+      <label class="lang-select">
+        <span data-i18n="language">Language</span>
+        <select id="langSelect" aria-label="Language">
+          <option value="en" label="English">🇺🇸</option>
+          <option value="es" label="Español">🇪🇸</option>
+          <option value="ko" label="한국어">🇰🇷</option>
+          <option value="zh-Hant" label="繁體中文">🇹🇼</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="tabs-row">
+      <div class="tabs">
+        <button class="tab active" data-type="ally" data-i18n="tabAlly">Ally</button>
+        <button class="tab" data-type="enemy" data-i18n="tabEnemy">Enemy</button>
+      </div>
+      <div class="tab-actions">
+        <button id="toggleFindReplace" type="button" class="icon-button" aria-controls="findReplacePanel" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M4 20h4.5L19 9.5 14.5 5 4 15.5V20Z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M13.5 6l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <span class="sr-only" data-i18n="findReplaceToggle">Find & Replace</span>
+        </button>
+        <button id="toggleCards" type="button" class="icon-button" aria-controls="allyContainer enemyContainer" aria-expanded="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M6 14l6-6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="sr-only" data-i18n="toggleCards">Toggle cards</span>
+        </button>
+        <button id="importData" type="button" data-i18n="import">Import</button>
+        <button id="exportData" type="button" data-i18n="export">Export</button>
+      </div>
+    </div>
+    <div id="findReplacePanel" class="find-replace">
+      <label>
+        <span data-i18n="findLabel">Find</span>
+        <input id="findInput" data-i18n-placeholder="findPlaceholder" placeholder="Find name...">
+      </label>
+      <label>
+        <span data-i18n="replaceLabel">Replace</span>
+        <input id="replaceInput" data-i18n-placeholder="replacePlaceholder" placeholder="Replace with...">
+      </label>
+      <div class="find-actions">
+        <button id="findNext" type="button" data-i18n="findNext">Find</button>
+        <button id="replaceOne" type="button" data-i18n="replaceOne">Replace</button>
+        <button id="replaceAll" type="button" data-i18n="replaceAll">Replace All</button>
+      </div>
+    </div>
+    <input type="file" id="importFile" class="import-file" accept="application/json">
+
+    <div id="allyContainer" class="rally-container ally"></div>
+    <div id="enemyContainer" class="rally-container enemy hidden"></div>
+
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right">
+    <h3 data-i18n="listTitle">Rally Creators & Targets</h3>
+    <div class="target-filter">
+      <span data-i18n="filterByTarget">Filter by target</span>
+      <button id="sortTargets" type="button" data-i18n="sortTargets">Sort</button>
+      <select id="targetSortSelect" aria-label="Filter by target"></select>
+    </div>
+    <div id="rallyList"></div>
+
+    <button id="calculate" data-i18n="calculate">Calculate</button>
+
+    <div class="result-header">
+      <h3 data-i18n="resultTitle">Result (UTC)</h3>
+      <button id="copyResult" type="button" data-i18n="copy">Copy</button>
+    </div>
+    <pre id="resultBox"></pre>
+  </div>
+
+</div>
+
+<script type="module" src="script.js"></script>
+</body>
+</html>
