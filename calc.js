@@ -46,17 +46,19 @@ export function calculateAgainstEnemy(app, enemyRally, row) {
     });
 }
 
-export function calculateAll(app) {
+export function calculateAll(app, filterTarget = "ALL") {
   app.resultBox.textContent = "";
   const rallies = [...document.querySelectorAll(".rally")];
   const rows = [...document.querySelectorAll(".target-row")];
   const groups = {};
+  const normalizedFilter = filterTarget || "ALL";
 
   rallies.forEach((rally, i) => {
     if (rally.dataset.type === "enemy") return;
 
     const target = rows[i]?.querySelector("select")?.value ?? NO_TARGET;
     if (target === NO_TARGET) return;
+    if (normalizedFilter !== "ALL" && target !== normalizedFilter) return;
     if (!isRallyEnabled(rally)) return;
 
     const box = rally.querySelector(`.t-box[data-name="${target}"]`);

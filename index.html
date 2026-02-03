@@ -84,7 +84,13 @@
     </div>
     <div id="rallyList"></div>
 
-    <button id="calculate" data-i18n="calculate">Calculate</button>
+    <div class="calculate-row">
+      <button id="calculate" data-i18n="calculate">Calculate</button>
+      <label class="calculate-filter">
+        <span data-i18n="calculateTarget">Target</span>
+        <select id="calculateTargetSelect" aria-label="Calculate target"></select>
+      </label>
+    </div>
 
     <div class="result-header">
       <h3 data-i18n="resultTitle">Result (UTC)</h3>

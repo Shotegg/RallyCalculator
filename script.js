@@ -16,7 +16,7 @@ import {
   setRallyBuffer
 } from "./helpers.js";
 import { loadFromStorage, saveToStorage, importFromJson, exportToJson } from "./storage.js";
-import { applyTranslations, getLanguage, initI18n, setLanguage, t } from "./i18n.js";
+import { applyTranslations, getLanguage, initI18n, setLanguage, t, targetLabel } from "./i18n.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const state = {
@@ -45,6 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initAddButton(app);
   initSearch(app);
   initTargetSort(app);
+  initCalculateTargetFilter(app);
   initFindReplace(app);
   initCardsToggle(app);
   initCalculate(app);
@@ -281,7 +282,8 @@ function initTargetSort(app) {
 
 function initCalculate(app) {
   document.getElementById("calculate").onclick = () => {
-    calculateAll(app);
+    const filter = app.calculateTargetSelect?.value ?? "ALL";
+    calculateAll(app, filter);
   };
 }
 
@@ -407,6 +409,7 @@ function initLanguageSelect(app) {
     setLanguage(select.value);
     applyTranslations();
     refreshTargetSortOptions(app);
+    refreshCalculateTargetOptions(app);
     updateRallyList(app, calculateAgainstEnemy);
   });
 }
@@ -485,6 +488,41 @@ function refreshTargetSortOptions(app) {
   if ([...TARGETS, NO_TARGET].includes(current)) {
     select.value = current;
   }
+}
+
+function initCalculateTargetFilter(app) {
+  const select = document.getElementById("calculateTargetSelect");
+  if (!select) return;
+  app.calculateTargetSelect = select;
+  setCalculateTargetOptions(select);
+  select.value = "ALL";
+}
+
+function refreshCalculateTargetOptions(app) {
+  const select = app.calculateTargetSelect;
+  if (!select) return;
+  const current = select.value;
+  setCalculateTargetOptions(select);
+  const valid = ["ALL", ...TARGETS];
+  if (valid.includes(current)) {
+    select.value = current;
+  }
+}
+
+function setCalculateTargetOptions(select) {
+  select.innerHTML = "";
+
+  const allOpt = document.createElement("option");
+  allOpt.value = "ALL";
+  allOpt.textContent = t("allTargets");
+  select.appendChild(allOpt);
+
+  TARGETS.forEach(name => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = targetLabel(name);
+    select.appendChild(opt);
+  });
 }
 
 function getTargetSortOrder(preferred) {
