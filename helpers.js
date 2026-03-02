@@ -51,3 +51,70 @@ export function setTargetCounterEnabled(rally, target, enabled) {
   if (!input) return;
   input.checked = Boolean(enabled);
 }
+
+export function getEnemyAllies(rally) {
+  const raw = rally.dataset.enemyAllies;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.map(v => String(v).trim()).filter(Boolean);
+      }
+    } catch {
+      // fallback to legacy DOM extraction
+    }
+  }
+  return [...rally.querySelectorAll(".enemy-ally-check:checked")]
+    .map(input => String(input.value || "").trim())
+    .filter(Boolean);
+}
+
+export function setEnemyAllies(rally, allyNames) {
+  const selected = [...new Set((allyNames || []).map(v => String(v).trim()).filter(Boolean))];
+  rally.dataset.enemyAllies = JSON.stringify(selected);
+  const selectedSet = new Set(selected);
+  rally.querySelectorAll(".enemy-ally-check").forEach(input => {
+    input.checked = selectedSet.has(input.value);
+  });
+}
+
+export function getRallyCoordinates(rally) {
+  const input = rally.querySelector(".coordinates");
+  return String(input?.value || "").trim();
+}
+
+export function setRallyCoordinates(rally, value) {
+  const input = rally.querySelector(".coordinates");
+  if (!input) return;
+  input.value = String(value || "");
+}
+
+export function getRallyFormationSelection(rally) {
+  const select = rally.querySelector(".formation-select");
+  return String(select?.value || "");
+}
+
+export function setRallyFormationSelection(rally, value) {
+  const select = rally.querySelector(".formation-select");
+  if (!select) return;
+  select.value = value || "";
+  select.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+export function getRallyFormationCustom(rally) {
+  const input = rally.querySelector(".formation-custom");
+  return String(input?.value || "").trim();
+}
+
+export function setRallyFormationCustom(rally, value) {
+  const input = rally.querySelector(".formation-custom");
+  if (!input) return;
+  input.value = String(value || "");
+}
+
+export function getRallyFormationValue(rally) {
+  const selected = getRallyFormationSelection(rally);
+  if (!selected) return "";
+  if (selected === "custom") return getRallyFormationCustom(rally);
+  return selected;
+}
