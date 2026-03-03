@@ -1,4 +1,5 @@
 import {
+  TARGETS,
   NO_TARGET,
   formatUTC,
   getRallyBuffer,
@@ -41,11 +42,7 @@ export function calculateAgainstEnemy(app, enemyRally, row) {
     });
   });
 
-  results
-    .sort((a, b) => a.time.getTime() - b.time.getTime())
-    .forEach(r => {
-      app.resultBox.textContent += `${r.name} -> ${formatUTC(r.time)} -> ${targetLabel(r.target)}\n`;
-    });
+  renderGroupedResults(app, results);
   appendFormationSummary(app, results);
 }
 
@@ -105,12 +102,33 @@ export function calculateAll(app, filterTarget = "ALL") {
     });
   });
 
-  results
-    .sort((a, b) => a.time.getTime() - b.time.getTime())
-    .forEach(r => {
-      app.resultBox.textContent += `${r.name} -> ${formatUTC(r.time)} -> ${targetLabel(r.target)}\n`;
-    });
+  renderGroupedResults(app, results);
   appendFormationSummary(app, results);
+}
+
+function renderGroupedResults(app, results) {
+  if (!results.length) return;
+
+  const grouped = new Map();
+  results.forEach(item => {
+    if (!grouped.has(item.target)) grouped.set(item.target, []);
+    grouped.get(item.target).push(item);
+  });
+
+  const orderedTargets = TARGETS.filter(target => grouped.has(target));
+  orderedTargets.forEach((target, index) => {
+    const items = grouped.get(target) || [];
+    items.sort((a, b) => a.time.getTime() - b.time.getTime());
+
+    app.resultBox.textContent += `${targetLabel(target)}\n`;
+    items.forEach(item => {
+      app.resultBox.textContent += `${item.name} -> ${formatUTC(item.time)}\n`;
+    });
+
+    if (index < orderedTargets.length - 1) {
+      app.resultBox.textContent += "\n";
+    }
+  });
 }
 
 function sanitizeName(name) {

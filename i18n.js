@@ -64,10 +64,10 @@ const STRINGS = {
     confirmSetGlobalBuffer: "Set all buffers to {value} sec?",
     minLabel: "min",
     secLabel: "sec",
-    "target.turret1": "Turret 1",
-    "target.turret2": "Turret 2",
-    "target.turret3": "Turret 3",
-    "target.turret4": "Turret 4",
+    "target.turret1": "Turret 1 (SOUTH)",
+    "target.turret2": "Turret 2 (WEST)",
+    "target.turret3": "Turret 3 (EAST)",
+    "target.turret4": "Turret 4 (NORTH)",
     "target.castle": "Castle"
   },
   es: {
@@ -124,10 +124,10 @@ const STRINGS = {
     confirmSetGlobalBuffer: "¿Aplicar {value} seg a todos?",
     minLabel: "min",
     secLabel: "seg",
-    "target.turret1": "Torreta 1",
-    "target.turret2": "Torreta 2",
-    "target.turret3": "Torreta 3",
-    "target.turret4": "Torreta 4",
+    "target.turret1": "Torreta 1 (SUR)",
+    "target.turret2": "Torreta 2 (OESTE)",
+    "target.turret3": "Torreta 3 (ESTE)",
+    "target.turret4": "Torreta 4 (NORTE)",
     "target.castle": "Castillo"
   },
   ko: {
@@ -184,10 +184,10 @@ const STRINGS = {
     confirmSetGlobalBuffer: "모든 버퍼를 {value}초로 설정할까요?",
     minLabel: "분",
     secLabel: "초",
-    "target.turret1": "포탑 1",
-    "target.turret2": "포탑 2",
-    "target.turret3": "포탑 3",
-    "target.turret4": "포탑 4",
+    "target.turret1": "포탑 1 (남)",
+    "target.turret2": "포탑 2 (서)",
+    "target.turret3": "포탑 3 (동)",
+    "target.turret4": "포탑 4 (북)",
     "target.castle": "성"
   },
   "zh-Hant": {
@@ -244,10 +244,10 @@ const STRINGS = {
     confirmSetGlobalBuffer: "將所有緩衝設為 {value} 秒？",
     minLabel: "分",
     secLabel: "秒",
-    "target.turret1": "砲塔 1",
-    "target.turret2": "砲塔 2",
-    "target.turret3": "砲塔 3",
-    "target.turret4": "砲塔 4",
+    "target.turret1": "砲塔 1 (南)",
+    "target.turret2": "砲塔 2 (西)",
+    "target.turret3": "砲塔 3 (東)",
+    "target.turret4": "砲塔 4 (北)",
     "target.castle": "城堡"
   }
 };
