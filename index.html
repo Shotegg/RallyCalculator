@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rally Helper</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20260303">
 </head>
 <body>
 
@@ -93,7 +93,10 @@
     </div>
 
     <div class="result-header">
-      <h3 data-i18n="resultTitle">Result (UTC)</h3>
+      <div class="result-title-row">
+        <h3 data-i18n="resultTitle">Result (UTC)</h3>
+        <span id="utcClock" class="utc-clock" aria-live="polite">00:00:00 UTC</span>
+      </div>
       <button id="copyResult" type="button" data-i18n="copy">Copy</button>
     </div>
     <pre id="resultBox"></pre>
@@ -101,6 +104,6 @@
 
 </div>
 
-<script type="module" src="script.js"></script>
+<script type="module" src="script.js?v=20260303"></script>
 </body>
 </html>

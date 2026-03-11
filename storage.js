@@ -8,22 +8,38 @@ import {
   setRallyEnabled,
   setRallyBuffer,
   setRallyTarget,
-  setTargetCounterEnabled
+  setTargetCounterEnabled,
+  getEnemyAllies,
+  setEnemyAllies,
+  TARGETS,
+  getRallyCoordinates,
+  setRallyCoordinates,
+  getRallyFormationSelection,
+  setRallyFormationSelection,
+  getRallyFormationCustom,
+  setRallyFormationCustom
 } from "./helpers.js";
 
 export function saveToStorage(app) {
   const data = [];
 
   document.querySelectorAll(".rally").forEach(rally => {
+    const isEnemy = rally.dataset.type === "enemy";
     const obj = {
       type: rally.dataset.type,
       name: getRallyName(rally),
       enabled: isRallyEnabled(rally),
       target: getRallyTarget(rally),
-      buffer: getRallyBuffer(rally),
-      counterTargets: getCounterTargets(rally),
-      boxes: {}
+      buffer: isEnemy ? 0 : getRallyBuffer(rally),
+      coordinates: getRallyCoordinates(rally),
+      formation: getRallyFormationSelection(rally),
+      formationCustom: getRallyFormationCustom(rally)
     };
+    if (isEnemy) {
+      obj.enemyAllies = getEnemyAllies(rally);
+    }
+    obj.counterTargets = isEnemy ? createFalseCounterTargets() : getCounterTargets(rally);
+    obj.boxes = {};
 
     rally.querySelectorAll(".t-box").forEach(box => {
       obj.boxes[box.dataset.name] = {
@@ -63,8 +79,13 @@ export function loadFromStorage(app, hooks) {
     rally.querySelector(".rally-header input").value = r.name;
     setRallyEnabled(rally, r.enabled !== false);
     setRallyTarget(rally, r.target || NO_TARGET);
-    setRallyBuffer(rally, r.buffer ?? 0);
-    applyCounterTargets(rally, r.counterTargets || {});
+    setRallyBuffer(rally, r.type === "enemy" ? 0 : (r.buffer ?? 0));
+    setRallyCoordinates(rally, r.coordinates || "");
+    applyFormationFields(rally, r);
+    applyCounterTargets(rally, r.type === "enemy" ? createFalseCounterTargets() : (r.counterTargets || {}));
+    if (r.type === "enemy") {
+      setEnemyAllies(rally, r.enemyAllies || []);
+    }
 
     Object.entries(r.boxes || {}).forEach(([key, val]) => {
       const box = rally.querySelector(`.t-box[data-name="${key}"]`);
@@ -79,7 +100,16 @@ export function loadFromStorage(app, hooks) {
 
 export function exportToJson() {
   const data = JSON.parse(localStorage.getItem("rallies") || "[]");
-  return JSON.stringify(data, null, 2);
+  const sanitized = data.map(item => {
+    if (!item || typeof item !== "object") return item;
+    const next = { ...item };
+    next.name = sanitizeName(next.name || "");
+    if (Array.isArray(next.enemyAllies)) {
+      next.enemyAllies = next.enemyAllies.map(name => sanitizeName(name));
+    }
+    return next;
+  });
+  return JSON.stringify(sanitized, null, 2);
 }
 
 export function importFromJson(app, jsonText, hooks) {
@@ -112,8 +142,13 @@ export function importFromJson(app, jsonText, hooks) {
     rally.querySelector(".rally-header input").value = r.name || "";
     setRallyEnabled(rally, r.enabled !== false);
     setRallyTarget(rally, r.target || NO_TARGET);
-    setRallyBuffer(rally, r.buffer ?? 0);
-    applyCounterTargets(rally, r.counterTargets || {});
+    setRallyBuffer(rally, r.type === "enemy" ? 0 : (r.buffer ?? 0));
+    setRallyCoordinates(rally, r.coordinates || "");
+    applyFormationFields(rally, r);
+    applyCounterTargets(rally, r.type === "enemy" ? createFalseCounterTargets() : (r.counterTargets || {}));
+    if (r.type === "enemy") {
+      setEnemyAllies(rally, r.enemyAllies || []);
+    }
 
     Object.entries(r.boxes || {}).forEach(([key, val]) => {
       const box = rally.querySelector(`.t-box[data-name="${key}"]`);
@@ -146,4 +181,34 @@ function applyCounterTargets(rally, map) {
   if (master && checks.length) {
     master.checked = checks.every(input => input.checked);
   }
+}
+
+function createFalseCounterTargets() {
+  return TARGETS.reduce((acc, target) => {
+    acc[target] = false;
+    return acc;
+  }, {});
+}
+
+function sanitizeName(name) {
+  return String(name || "")
+    .replace(/\s*\[[^\]]*]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function applyFormationFields(rally, record) {
+  const preset = String(record?.formation || "");
+  const customText = String(record?.formationCustom || "");
+  const presetValues = new Set(["", "60/40", "50/20/30", "custom"]);
+
+  if (presetValues.has(preset)) {
+    setRallyFormationCustom(rally, customText);
+    setRallyFormationSelection(rally, preset);
+    return;
+  }
+
+  // Backward compatibility: custom text stored directly in `formation`.
+  setRallyFormationCustom(rally, preset || customText);
+  setRallyFormationSelection(rally, "custom");
 }

@@ -50,6 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initCardsToggle(app);
   initCalculate(app);
   initCopyButton(app);
+  initUtcClock();
   initImport(app);
   initExport(app);
 
@@ -136,6 +137,22 @@ function initSearch(app) {
       updateRallyList(app, calculateAgainstEnemy);
     }
   });
+}
+
+function initUtcClock() {
+  const clockEl = document.getElementById("utcClock");
+  if (!clockEl) return;
+
+  const update = () => {
+    const now = new Date();
+    const hh = String(now.getUTCHours()).padStart(2, "0");
+    const mm = String(now.getUTCMinutes()).padStart(2, "0");
+    const ss = String(now.getUTCSeconds()).padStart(2, "0");
+    clockEl.textContent = `${hh}:${mm}:${ss} UTC`;
+  };
+
+  update();
+  window.setInterval(update, 1000);
 }
 
 function initFindReplace(app) {

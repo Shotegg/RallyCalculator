@@ -1,10 +1,12 @@
 import {
+  TARGETS,
   NO_TARGET,
   formatUTC,
   getRallyBuffer,
   getRallyName,
   isRallyEnabled,
-  isTargetCounterEnabled
+  isTargetCounterEnabled,
+  getRallyFormationValue
 } from "./helpers.js";
 import { targetLabel } from "./i18n.js";
 
@@ -35,15 +37,13 @@ export function calculateAgainstEnemy(app, enemyRally, row) {
     results.push({
       name: sanitizeName(getRallyName(ally)),
       time: t,
-      target
+      target,
+      formation: getRallyFormationValue(ally)
     });
   });
 
-  results
-    .sort((a, b) => a.time.getTime() - b.time.getTime())
-    .forEach(r => {
-      app.resultBox.textContent += `${r.name} -> ${formatUTC(r.time)} -> ${targetLabel(r.target)}\n`;
-    });
+  renderGroupedResults(app, results);
+  appendFormationSummary(app, results);
 }
 
 export function calculateAll(app, filterTarget = "ALL") {
@@ -71,7 +71,8 @@ export function calculateAll(app, filterTarget = "ALL") {
     groups[target].push({
       name: sanitizeName(getRallyName(rally)),
       targetTime,
-      buffer
+      buffer,
+      formation: getRallyFormationValue(rally)
     });
   });
 
@@ -95,16 +96,39 @@ export function calculateAll(app, filterTarget = "ALL") {
       results.push({
         name: g.name,
         time: t,
-        target
+        target,
+        formation: g.formation
       });
     });
   });
 
-  results
-    .sort((a, b) => a.time.getTime() - b.time.getTime())
-    .forEach(r => {
-      app.resultBox.textContent += `${r.name} -> ${formatUTC(r.time)} -> ${targetLabel(r.target)}\n`;
+  renderGroupedResults(app, results);
+  appendFormationSummary(app, results);
+}
+
+function renderGroupedResults(app, results) {
+  if (!results.length) return;
+
+  const grouped = new Map();
+  results.forEach(item => {
+    if (!grouped.has(item.target)) grouped.set(item.target, []);
+    grouped.get(item.target).push(item);
+  });
+
+  const orderedTargets = TARGETS.filter(target => grouped.has(target));
+  orderedTargets.forEach((target, index) => {
+    const items = grouped.get(target) || [];
+    items.sort((a, b) => a.time.getTime() - b.time.getTime());
+
+    app.resultBox.textContent += `${targetLabel(target)}\n`;
+    items.forEach(item => {
+      app.resultBox.textContent += `${item.name} -> ${formatUTC(item.time)}\n`;
     });
+
+    if (index < orderedTargets.length - 1) {
+      app.resultBox.textContent += "\n";
+    }
+  });
 }
 
 function sanitizeName(name) {
@@ -112,4 +136,21 @@ function sanitizeName(name) {
     .replace(/\s*\[[^\]]*]/g, "")
     .replace(/\s{2,}/g, " ")
     .trim();
+}
+
+function appendFormationSummary(app, results) {
+  const lines = [];
+  const seen = new Set();
+
+  results.forEach(item => {
+    const name = String(item.name || "").trim();
+    const formation = String(item.formation || "").trim();
+    if (!name || !formation) return;
+    if (seen.has(name)) return;
+    seen.add(name);
+    lines.push(`${name}: ${formation}`);
+  });
+
+  if (!lines.length) return;
+  app.resultBox.textContent += `\nFormations:\n${lines.join("\n")}\n`;
 }

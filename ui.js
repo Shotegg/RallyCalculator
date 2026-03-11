@@ -5,9 +5,26 @@ import {
   getRallyTarget,
   isRallyEnabled,
   setRallyEnabled,
-  setRallyTarget
+  setRallyTarget,
+  getEnemyAllies,
+  setEnemyAllies
 } from "./helpers.js";
 import { t, targetLabel } from "./i18n.js";
+
+const enemyAlliesModalState = {
+  root: null,
+  app: null,
+  activeRally: null
+};
+
+const marchTimesModalState = {
+  root: null,
+  body: null,
+  title: null,
+  activeRally: null,
+  originalGrid: null,
+  modalGrid: null
+};
 
 export function createRallyCreator(app, type, number, hooks) {
   const rally = document.createElement("div");
@@ -18,6 +35,7 @@ export function createRallyCreator(app, type, number, hooks) {
   rally.dataset.target = NO_TARGET;
 
   const defaultName = `${t(type === "ally" ? "tabAlly" : "tabEnemy")} ${t("rallyWord")} ${number}`;
+  const isEnemy = type === "enemy";
 
   rally.innerHTML = `
     <div class="rally-header">
@@ -32,6 +50,9 @@ export function createRallyCreator(app, type, number, hooks) {
 
     <div class="rally-content">
       <div class="buffer-row">
+        ${isEnemy ? `
+        <span class="enemy-fixed-buffer"><span data-i18n="bufferLabel">Buffer (sec)</span>: 0</span>
+        ` : `
         <label class="buffer-label">
           <span data-i18n="bufferLabel">Buffer (sec)</span>
           <input type="number" class="buffer" min="0" value="0">
@@ -41,9 +62,40 @@ export function createRallyCreator(app, type, number, hooks) {
           <input type="checkbox" class="counter-master" checked>
           <span data-i18n="counterRally">Counter rally</span>
         </label>
+        `}
       </div>
-      <div class="t-grid">
-        ${TARGETS.map(createTBox).join("")}
+      <div class="rally-meta-row">
+        <label class="coordinates-label">
+          <span data-i18n="coordinatesLabel">Coordinates</span>
+          <input type="text" class="coordinates" placeholder="x,y" data-i18n-placeholder="coordinatesPlaceholder">
+        </label>
+        <label class="formation-label">
+          <span data-i18n="formationsLabel">Formations</span>
+          <select class="formation-select">
+            <option value="" data-i18n="formationNone">-</option>
+            <option value="60/40">60/40</option>
+            <option value="50/20/30">50/20/30</option>
+            <option value="60/0/40">60/0/40</option>
+            <option value="60/10/30">60/10/30</option>
+            <option value="custom" data-i18n="formationCustom">custom</option>
+          </select>
+          <input type="text" class="formation-custom hidden" placeholder="formation..." data-i18n-placeholder="formationCustomPlaceholder">
+        </label>
+      </div>
+      ${isEnemy ? `
+      <div class="enemy-allies">
+        <div class="enemy-allies-label" data-i18n="enemyAllies">Enemy allies</div>
+        <button type="button" class="choose-enemy-allies" data-i18n="chooseEnemyAllies">Choose allies for counter</button>
+        <div class="enemy-allies-summary"></div>
+      </div>
+      ` : ""}
+      <div class="march-times-row">
+        <button type="button" class="open-march-times" data-i18n="marchTimes">March times</button>
+      </div>
+      <div class="march-times-source hidden">
+        <div class="t-grid">
+          ${TARGETS.map(name => createTBox(name, !isEnemy)).join("")}
+        </div>
       </div>
     </div>
   `;
@@ -85,12 +137,24 @@ export function createRallyCreator(app, type, number, hooks) {
   }
 
   setupCounterControls(rally);
+  initFormationControls(rally);
+  initMarchTimesControls(rally);
+  if (isEnemy) {
+    initEnemyAlliesControls(app, rally);
+  }
 
   return rally;
 }
 
-export function createTBox(name) {
+export function createTBox(name, showCounterCheck = true) {
   const label = targetLabel(name);
+  const counterHtml = showCounterCheck
+    ? `
+      <label class="counter-check-row">
+        <input type="checkbox" class="counter-check" checked aria-label="Counter target">
+      </label>
+    `
+    : "";
   return `
     <div class="t-box" data-name="${name}">
       <strong data-i18n="${getTargetKey(name)}">${label}</strong>
@@ -102,11 +166,31 @@ export function createTBox(name) {
         <span class="time-label" data-i18n="secLabel">sec</span>
         <input type="number" class="sec" min="0" value="0" placeholder="sec" data-i18n-placeholder="secLabel" aria-label="seconds">
       </div>
-      <label class="counter-check-row">
-        <input type="checkbox" class="counter-check" checked aria-label="Counter target">
-      </label>
+      ${counterHtml}
     </div>
   `;
+}
+
+function initFormationControls(rally) {
+  const select = rally.querySelector(".formation-select");
+  const custom = rally.querySelector(".formation-custom");
+  if (!select || !custom) return;
+
+  const sync = () => {
+    custom.classList.toggle("hidden", select.value !== "custom");
+  };
+
+  select.addEventListener("change", sync);
+  sync();
+}
+
+function initMarchTimesControls(rally) {
+  const btn = rally.querySelector(".open-march-times");
+  if (!btn) return;
+  btn.addEventListener("click", e => {
+    e.stopPropagation();
+    openMarchTimesModal(rally);
+  });
 }
 
 export function openOnly(app, target, type) {
@@ -139,6 +223,8 @@ export function enableDrag(app, rally, container, onUpdateList) {
 }
 
 export function updateRallyList(app, calculateAgainstEnemy) {
+  syncEnemyAllySelections(app);
+  syncMarchTimesModal();
   app.rallyList.innerHTML = "";
 
   addSection(app, t("alliesSection"), "ally");
@@ -267,4 +353,293 @@ function setupCounterControls(rally) {
       input.checked = value;
     });
   });
+}
+
+function syncMarchTimesModal() {
+  const active = marchTimesModalState.activeRally;
+  if (!active) return;
+  if (!document.body.contains(active)) {
+    closeMarchTimesModal();
+    return;
+  }
+  if (marchTimesModalState.title) {
+    marchTimesModalState.title.textContent = `${t("marchTimes")} - ${getRallyName(active)}`;
+  }
+}
+
+function ensureMarchTimesModal() {
+  if (marchTimesModalState.root) return;
+  const root = document.createElement("div");
+  root.className = "march-times-modal hidden";
+  root.innerHTML = `
+    <div class="march-times-backdrop"></div>
+    <div class="march-times-sheet" role="dialog" aria-modal="true">
+      <div class="march-times-header">
+        <h3 class="march-times-title"></h3>
+        <button type="button" class="march-times-close">x</button>
+      </div>
+      <div class="march-times-body"></div>
+    </div>
+  `;
+  root.querySelector(".march-times-backdrop")
+    .addEventListener("click", closeMarchTimesModal);
+  root.querySelector(".march-times-close")
+    .addEventListener("click", closeMarchTimesModal);
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && marchTimesModalState.activeRally) {
+      closeMarchTimesModal();
+    }
+  });
+
+  document.body.appendChild(root);
+  marchTimesModalState.root = root;
+  marchTimesModalState.body = root.querySelector(".march-times-body");
+  marchTimesModalState.title = root.querySelector(".march-times-title");
+}
+
+function openMarchTimesModal(rally) {
+  ensureMarchTimesModal();
+  closeMarchTimesModal();
+
+  const sourceHost = rally.querySelector(".march-times-source");
+  const originalGrid = sourceHost?.querySelector(".t-grid");
+  if (!originalGrid || !marchTimesModalState.body) return;
+  const modalGrid = originalGrid.cloneNode(true);
+
+  marchTimesModalState.activeRally = rally;
+  marchTimesModalState.originalGrid = originalGrid;
+  marchTimesModalState.modalGrid = modalGrid;
+  marchTimesModalState.title.textContent = `${t("marchTimes")} - ${getRallyName(rally)}`;
+  marchTimesModalState.body.appendChild(modalGrid);
+  marchTimesModalState.root.classList.remove("hidden");
+}
+
+function closeMarchTimesModal() {
+  const state = marchTimesModalState;
+  if (state.modalGrid && state.originalGrid) {
+    copyGridValues(state.modalGrid, state.originalGrid);
+    state.originalGrid.dispatchEvent(new Event("input", { bubbles: true }));
+    state.modalGrid.remove();
+  }
+  if (state.root) {
+    state.root.classList.add("hidden");
+  }
+  state.activeRally = null;
+  state.originalGrid = null;
+  state.modalGrid = null;
+}
+
+function copyGridValues(fromGrid, toGrid) {
+  TARGETS.forEach(target => {
+    const fromBox = fromGrid.querySelector(`.t-box[data-name="${target}"]`);
+    const toBox = toGrid.querySelector(`.t-box[data-name="${target}"]`);
+    if (!fromBox || !toBox) return;
+
+    const fromMin = fromBox.querySelector(".min");
+    const toMin = toBox.querySelector(".min");
+    const fromSec = fromBox.querySelector(".sec");
+    const toSec = toBox.querySelector(".sec");
+    if (fromMin && toMin) toMin.value = fromMin.value;
+    if (fromSec && toSec) toSec.value = fromSec.value;
+
+    const fromCheck = fromBox.querySelector(".counter-check");
+    const toCheck = toBox.querySelector(".counter-check");
+    if (fromCheck && toCheck) toCheck.checked = fromCheck.checked;
+  });
+}
+
+function getAllyCreatorNames(app) {
+  const names = [...app.containers.ally.querySelectorAll(".rally")]
+    .map(rally => getRallyName(rally).trim())
+    .filter(Boolean);
+  return [...new Set(names)];
+}
+
+function syncEnemyAllySelections(app) {
+  const allyNames = getAllyCreatorNames(app);
+  app.containers.enemy.querySelectorAll(".rally").forEach(rally => {
+    const selected = getEnemyAllies(rally).filter(name => allyNames.includes(name));
+    setEnemyAllies(rally, selected);
+    updateEnemyAlliesSummary(rally, allyNames);
+  });
+
+  const active = enemyAlliesModalState.activeRally;
+  if (active && !document.body.contains(active)) {
+    closeEnemyAlliesModal();
+    return;
+  }
+  if (active) {
+    renderEnemyAlliesModal(active, allyNames);
+  }
+}
+
+function initEnemyAlliesControls(app, enemyRally) {
+  const btn = enemyRally.querySelector(".choose-enemy-allies");
+  if (!btn) return;
+  btn.addEventListener("click", e => {
+    e.stopPropagation();
+    openEnemyAlliesModal(app, enemyRally);
+  });
+  updateEnemyAlliesSummary(enemyRally, getAllyCreatorNames(app));
+}
+
+function updateEnemyAlliesSummary(enemyRally, allyNames) {
+  const summary = enemyRally.querySelector(".enemy-allies-summary");
+  if (!summary) return;
+  const selected = getEnemyAllies(enemyRally).filter(name => allyNames.includes(name));
+  if (!allyNames.length) {
+    summary.textContent = t("noAlliesYet");
+    return;
+  }
+  if (!selected.length) {
+    summary.textContent = t("selectedCountNone");
+    return;
+  }
+  const template = t("selectedCount");
+  summary.textContent = template.includes("{count}")
+    ? template.replace("{count}", String(selected.length))
+    : `${selected.length} selected`;
+}
+
+function openEnemyAlliesModal(app, enemyRally) {
+  const allyNames = getAllyCreatorNames(app);
+  ensureEnemyAlliesModal(app);
+  enemyAlliesModalState.activeRally = enemyRally;
+  enemyAlliesModalState.app = app;
+  renderEnemyAlliesModal(enemyRally, allyNames);
+  enemyAlliesModalState.root.classList.remove("hidden");
+}
+
+function closeEnemyAlliesModal() {
+  if (!enemyAlliesModalState.root) return;
+  enemyAlliesModalState.root.classList.add("hidden");
+  enemyAlliesModalState.activeRally = null;
+}
+
+function ensureEnemyAlliesModal(app) {
+  if (enemyAlliesModalState.root) return;
+  const root = document.createElement("div");
+  root.className = "enemy-allies-modal hidden";
+  root.innerHTML = `
+    <div class="enemy-allies-backdrop"></div>
+    <div class="enemy-allies-dialog" role="dialog" aria-modal="true">
+      <div class="enemy-allies-dialog-header">
+        <h3 class="enemy-allies-title"></h3>
+      </div>
+      <div class="enemy-allies-dual-list">
+        <div class="enemy-allies-list-block">
+          <div class="enemy-allies-list-title"></div>
+          <select class="enemy-allies-available" multiple size="12"></select>
+        </div>
+        <div class="enemy-allies-actions">
+          <button type="button" class="enemy-allies-add">&gt;</button>
+          <button type="button" class="enemy-allies-add-all">&gt;&gt;</button>
+          <button type="button" class="enemy-allies-remove">&lt;</button>
+          <button type="button" class="enemy-allies-remove-all">&lt;&lt;</button>
+        </div>
+        <div class="enemy-allies-list-block">
+          <div class="enemy-allies-list-title"></div>
+          <select class="enemy-allies-selected" multiple size="12"></select>
+        </div>
+      </div>
+      <div class="enemy-allies-dialog-footer">
+        <button type="button" class="enemy-allies-cancel"></button>
+        <button type="button" class="enemy-allies-save"></button>
+      </div>
+    </div>
+  `;
+
+  const available = root.querySelector(".enemy-allies-available");
+  const selected = root.querySelector(".enemy-allies-selected");
+
+  root.querySelector(".enemy-allies-backdrop")
+    .addEventListener("click", closeEnemyAlliesModal);
+  root.querySelector(".enemy-allies-cancel")
+    .addEventListener("click", closeEnemyAlliesModal);
+  root.querySelector(".enemy-allies-save")
+    .addEventListener("click", () => {
+      const activeRally = enemyAlliesModalState.activeRally;
+      if (activeRally) {
+        setEnemyAllies(activeRally, getOptionValues(selected));
+        updateEnemyAlliesSummary(activeRally, getAllyCreatorNames(app));
+      }
+      closeEnemyAlliesModal();
+    });
+
+  root.querySelector(".enemy-allies-add")
+    .addEventListener("click", () => moveSelectedOptions(available, selected));
+  root.querySelector(".enemy-allies-add-all")
+    .addEventListener("click", () => moveAllOptions(available, selected));
+  root.querySelector(".enemy-allies-remove")
+    .addEventListener("click", () => moveSelectedOptions(selected, available));
+  root.querySelector(".enemy-allies-remove-all")
+    .addEventListener("click", () => moveAllOptions(selected, available));
+
+  available.addEventListener("dblclick", () => moveSelectedOptions(available, selected));
+  selected.addEventListener("dblclick", () => moveSelectedOptions(selected, available));
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && enemyAlliesModalState.activeRally) {
+      closeEnemyAlliesModal();
+    }
+  });
+
+  document.body.appendChild(root);
+  enemyAlliesModalState.root = root;
+}
+
+function renderEnemyAlliesModal(enemyRally, allyNames) {
+  const root = enemyAlliesModalState.root;
+  if (!root) return;
+
+  root.querySelector(".enemy-allies-title").textContent = t("chooseEnemyAllies");
+  const listTitles = root.querySelectorAll(".enemy-allies-list-title");
+  listTitles[0].textContent = t("availableAllies");
+  listTitles[1].textContent = t("selectedAllies");
+  root.querySelector(".enemy-allies-cancel").textContent = t("cancel");
+  root.querySelector(".enemy-allies-save").textContent = t("save");
+
+  const selectedSet = new Set(getEnemyAllies(enemyRally).filter(name => allyNames.includes(name)));
+  const available = root.querySelector(".enemy-allies-available");
+  const selected = root.querySelector(".enemy-allies-selected");
+  available.innerHTML = "";
+  selected.innerHTML = "";
+
+  allyNames.forEach(name => {
+    const opt = new Option(name, name);
+    if (selectedSet.has(name)) {
+      selected.add(opt);
+    } else {
+      available.add(opt);
+    }
+  });
+}
+
+function moveSelectedOptions(source, target) {
+  [...source.selectedOptions].forEach(option => {
+    target.add(new Option(option.text, option.value));
+    option.remove();
+  });
+  sortOptions(source);
+  sortOptions(target);
+}
+
+function moveAllOptions(source, target) {
+  [...source.options].forEach(option => {
+    target.add(new Option(option.text, option.value));
+    option.remove();
+  });
+  sortOptions(target);
+}
+
+function sortOptions(select) {
+  const items = [...select.options].map(opt => ({ text: opt.text, value: opt.value }));
+  items.sort((a, b) => a.text.localeCompare(b.text));
+  select.innerHTML = "";
+  items.forEach(item => select.add(new Option(item.text, item.value)));
+}
+
+function getOptionValues(select) {
+  return [...select.options].map(option => option.value).filter(Boolean);
 }
