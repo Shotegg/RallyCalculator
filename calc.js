@@ -15,9 +15,7 @@ export function calculateAgainstEnemy(app, enemyRally, row) {
   if (target === NO_TARGET) return;
 
   const enemyBox = enemyRally.querySelector(`.t-box[data-name="${target}"]`);
-  const enemyTime =
-    Number(enemyBox.querySelector(".min").value) * 60 +
-    Number(enemyBox.querySelector(".sec").value);
+  const enemyTime = Number(enemyBox.querySelector(".sec").value);
 
   app.resultBox.textContent = "";
   const now = new Date();
@@ -27,9 +25,7 @@ export function calculateAgainstEnemy(app, enemyRally, row) {
     if (!isTargetCounterEnabled(ally, target)) return;
 
     const allyBox = ally.querySelector(`.t-box[data-name="${target}"]`);
-    const allyTime =
-      Number(allyBox.querySelector(".min").value) * 60 +
-      Number(allyBox.querySelector(".sec").value);
+    const allyTime = Number(allyBox.querySelector(".sec").value);
 
     if (allyTime > enemyTime) return;
 
@@ -62,9 +58,7 @@ export function calculateAll(app, filterTarget = "ALL") {
     if (!isRallyEnabled(rally)) return;
 
     const box = rally.querySelector(`.t-box[data-name="${target}"]`);
-    const targetTime =
-      Number(box.querySelector(".min").value) * 60 +
-      Number(box.querySelector(".sec").value);
+    const targetTime = Number(box.querySelector(".sec").value);
     const buffer = getRallyBuffer(rally);
 
     if (!groups[target]) groups[target] = [];

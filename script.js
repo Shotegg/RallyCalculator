@@ -4,16 +4,15 @@ import {
   openFirst,
   openOnly,
   updateRallyList,
-  setTargetOptions
+  setTargetOptions,
+  refreshPets
 } from "./ui.js";
 import { calculateAgainstEnemy, calculateAll } from "./calc.js";
 import {
   TARGETS,
   NO_TARGET,
   getRallyTarget,
-  getRallyName,
-  getRallyBuffer,
-  setRallyBuffer
+  getRallyName
 } from "./helpers.js";
 import { loadFromStorage, saveToStorage, importFromJson, exportToJson } from "./storage.js";
 import { applyTranslations, getLanguage, initI18n, setLanguage, t, targetLabel } from "./i18n.js";
@@ -21,8 +20,7 @@ import { applyTranslations, getLanguage, initI18n, setLanguage, t, targetLabel }
 document.addEventListener("DOMContentLoaded", () => {
   const state = {
     activeType: "ally",
-    counters: { ally: 0, enemy: 0 },
-    globalBuffer: 0
+    counters: { ally: 0, enemy: 0 }
   };
 
   const containers = {
@@ -47,7 +45,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initTargetSort(app);
   initCalculateTargetFilter(app);
   initFindReplace(app);
-  initCardsToggle(app);
   initCalculate(app);
   initCopyButton(app);
   initUtcClock();
@@ -59,9 +56,12 @@ document.addEventListener("DOMContentLoaded", () => {
     updateRallyList,
     calculateAgainstEnemy,
     openOnly,
-    enableDrag,
-    onSetGlobalBuffer: rally => applyGlobalBuffer(app, rally)
+    enableDrag
   });
+
+  const refreshAllPets = () => document.querySelectorAll(".rally").forEach(refreshPets);
+  refreshAllPets();
+  setInterval(refreshAllPets, 250);
 
   document.addEventListener("input", () => saveToStorage(app));
   document.addEventListener("click", () => saveToStorage(app));
@@ -91,21 +91,18 @@ function initTabs(app) {
 
 function initAddButton(app) {
   document.getElementById("addRally").onclick = () => {
-    app.state.counters[app.state.activeType]++;
+    const type = app.state.activeType || "ally";
+    app.state.counters[type]++;
     const rally = createRallyCreator(
       app,
-      app.state.activeType,
-      app.state.counters[app.state.activeType],
+      type,
+      app.state.counters[type],
       {
         openOnly,
         enableDrag,
-        onUpdateList: () => updateRallyList(app, calculateAgainstEnemy),
-        onSetGlobalBuffer: target => applyGlobalBuffer(app, target)
+        onUpdateList: () => updateRallyList(app, calculateAgainstEnemy)
       }
     );
-    if (rally) {
-      setRallyBuffer(rally, app.state.globalBuffer ?? 0);
-    }
     openFirst(app, app.state.activeType);
     updateRallyList(app, calculateAgainstEnemy);
   };
@@ -261,24 +258,6 @@ function initFindReplace(app) {
   });
 }
 
-function initCardsToggle(app) {
-  const btn = document.getElementById("toggleCards");
-  const left = document.querySelector(".left");
-  if (!btn || !left) return;
-
-  const setCollapsed = collapsed => {
-    left.classList.toggle("cards-collapsed", collapsed);
-    btn.classList.toggle("is-collapsed", collapsed);
-    btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
-  };
-
-  setCollapsed(false);
-
-  btn.addEventListener("click", () => {
-    const isCollapsed = left.classList.contains("cards-collapsed");
-    setCollapsed(!isCollapsed);
-  });
-}
 
 function initTargetSort(app) {
   const select = document.getElementById("targetSortSelect");
@@ -350,8 +329,7 @@ function initImport(app) {
         updateRallyList,
         calculateAgainstEnemy,
         openOnly,
-        enableDrag,
-        onSetGlobalBuffer: rally => applyGlobalBuffer(app, rally)
+        enableDrag
       });
       fileInput.value = "";
     } catch {
@@ -405,18 +383,6 @@ function fallbackCopyText(text) {
   }
 }
 
-function applyGlobalBuffer(app, rally) {
-  const value = getRallyBuffer(rally);
-  const message = formatConfirmMessage(value);
-  if (!window.confirm(message)) return;
-
-  app.state.globalBuffer = value;
-  document.querySelectorAll(".rally").forEach(item => {
-    setRallyBuffer(item, value);
-  });
-  saveToStorage(app);
-}
-
 function initLanguageSelect(app) {
   const select = document.getElementById("langSelect");
   if (!select) return;
@@ -434,13 +400,6 @@ function initLanguageSelect(app) {
 function applyCopyLabel(isCopied) {
   const key = isCopied ? "copied" : "copy";
   return t(key);
-}
-
-function formatConfirmMessage(value) {
-  const template = t("confirmSetGlobalBuffer");
-  return template.includes("{value}")
-    ? template.replace("{value}", value)
-    : template;
 }
 
 function getAllRallies(app) {
@@ -476,7 +435,7 @@ function replaceNameOnce(name, query, replacement) {
 }
 
 function setRallyName(rally, value) {
-  const input = rally.querySelector(".rally-header input");
+  const input = rally.querySelector(".rally-name");
   if (!input) return;
   input.value = value;
 }
@@ -488,9 +447,7 @@ function focusMatch(app, match) {
 }
 
 function setActiveType(app, type) {
-  if (app.state.activeType === type) return;
-  const tab = document.querySelector(`.tab[data-type="${type}"]`);
-  if (tab) tab.click();
+  app.state.activeType = type;
 }
 
 function escapeRegExp(value) {

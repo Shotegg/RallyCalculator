@@ -33,7 +33,10 @@ export function saveToStorage(app) {
       buffer: isEnemy ? 0 : getRallyBuffer(rally),
       coordinates: getRallyCoordinates(rally),
       formation: getRallyFormationSelection(rally),
-      formationCustom: getRallyFormationCustom(rally)
+      formationCustom: getRallyFormationCustom(rally),
+      petsUntil: rally.dataset.petsUntil || "",
+      petsDuration: rally.querySelector(".pets-duration")?.value || "2",
+      petsBonus: rally.querySelector(".pets-bonus")?.value || "30"
     };
     if (isEnemy) {
       obj.enemyAllies = getEnemyAllies(rally);
@@ -43,7 +46,6 @@ export function saveToStorage(app) {
 
     rally.querySelectorAll(".t-box").forEach(box => {
       obj.boxes[box.dataset.name] = {
-        min: box.querySelector(".min").value,
         sec: box.querySelector(".sec").value
       };
     });
@@ -52,35 +54,26 @@ export function saveToStorage(app) {
   });
 
   localStorage.setItem("rallies", JSON.stringify(data));
-  if (app?.state) {
-    localStorage.setItem("globalBuffer", String(app.state.globalBuffer ?? 0));
-  }
 }
 
 export function loadFromStorage(app, hooks) {
   const data = JSON.parse(localStorage.getItem("rallies") || "[]");
-  const savedGlobal = localStorage.getItem("globalBuffer");
-  if (app?.state) {
-    const parsed = Number(savedGlobal);
-    app.state.globalBuffer = Number.isFinite(parsed) ? parsed : (app.state.globalBuffer ?? 0);
-  }
-
   data.forEach(r => {
     app.state.counters[r.type]++;
     hooks.createRallyCreator(app, r.type, app.state.counters[r.type], {
       openOnly: hooks.openOnly,
       enableDrag: hooks.enableDrag,
-      onUpdateList: () => hooks.updateRallyList(app, hooks.calculateAgainstEnemy),
-      onSetGlobalBuffer: hooks.onSetGlobalBuffer
+      onUpdateList: () => hooks.updateRallyList(app, hooks.calculateAgainstEnemy)
     });
 
     const rally = app.containers[r.type].querySelector(".rally");
 
-    rally.querySelector(".rally-header input").value = r.name;
+    rally.querySelector(".rally-name").value = r.name;
     setRallyEnabled(rally, r.enabled !== false);
     setRallyTarget(rally, r.target || NO_TARGET);
     setRallyBuffer(rally, r.type === "enemy" ? 0 : (r.buffer ?? 0));
     setRallyCoordinates(rally, r.coordinates || "");
+    applyPets(rally, r);
     applyFormationFields(rally, r);
     applyCounterTargets(rally, r.type === "enemy" ? createFalseCounterTargets() : (r.counterTargets || {}));
     if (r.type === "enemy") {
@@ -90,8 +83,10 @@ export function loadFromStorage(app, hooks) {
     Object.entries(r.boxes || {}).forEach(([key, val]) => {
       const box = rally.querySelector(`.t-box[data-name="${key}"]`);
       if (!box) return;
-      box.querySelector(".min").value = val.min;
-      box.querySelector(".sec").value = val.sec;
+      const sec = Number(val?.sec ?? 0);
+      const min = Number(val?.min ?? 0);
+      const total = Number.isFinite(sec) ? sec + (Number.isFinite(min) ? min * 60 : 0) : 0;
+      box.querySelector(".sec").value = total;
     });
   });
 
@@ -132,18 +127,18 @@ export function importFromJson(app, jsonText, hooks) {
     hooks.createRallyCreator(app, r.type, app.state.counters[r.type], {
       openOnly: hooks.openOnly,
       enableDrag: hooks.enableDrag,
-      onUpdateList: () => hooks.updateRallyList(app, hooks.calculateAgainstEnemy),
-      onSetGlobalBuffer: hooks.onSetGlobalBuffer
+      onUpdateList: () => hooks.updateRallyList(app, hooks.calculateAgainstEnemy)
     });
 
     const rally = app.containers[r.type].querySelector(".rally");
     if (!rally) return;
 
-    rally.querySelector(".rally-header input").value = r.name || "";
+    rally.querySelector(".rally-name").value = r.name || "";
     setRallyEnabled(rally, r.enabled !== false);
     setRallyTarget(rally, r.target || NO_TARGET);
     setRallyBuffer(rally, r.type === "enemy" ? 0 : (r.buffer ?? 0));
     setRallyCoordinates(rally, r.coordinates || "");
+    applyPets(rally, r);
     applyFormationFields(rally, r);
     applyCounterTargets(rally, r.type === "enemy" ? createFalseCounterTargets() : (r.counterTargets || {}));
     if (r.type === "enemy") {
@@ -153,8 +148,10 @@ export function importFromJson(app, jsonText, hooks) {
     Object.entries(r.boxes || {}).forEach(([key, val]) => {
       const box = rally.querySelector(`.t-box[data-name="${key}"]`);
       if (!box) return;
-      box.querySelector(".min").value = val.min ?? 0;
-      box.querySelector(".sec").value = val.sec ?? 0;
+      const sec = Number(val?.sec ?? 0);
+      const min = Number(val?.min ?? 0);
+      const total = Number.isFinite(sec) ? sec + (Number.isFinite(min) ? min * 60 : 0) : 0;
+      box.querySelector(".sec").value = total;
     });
   });
 
@@ -211,4 +208,13 @@ function applyFormationFields(rally, record) {
   // Backward compatibility: custom text stored directly in `formation`.
   setRallyFormationCustom(rally, preset || customText);
   setRallyFormationSelection(rally, "custom");
+}
+
+function applyPets(rally, record) {
+  if (rally.dataset.type === "enemy") return;
+  rally.dataset.petsUntil = record?.petsUntil || "";
+  const duration = rally.querySelector(".pets-duration");
+  const bonus = rally.querySelector(".pets-bonus");
+  if (duration) duration.value = record?.petsDuration ?? "2";
+  if (bonus) bonus.value = record?.petsBonus ?? "30";
 }

@@ -7,7 +7,9 @@ import {
   setRallyEnabled,
   setRallyTarget,
   getEnemyAllies,
-  setEnemyAllies
+  setEnemyAllies,
+  getRallyCoordinates,
+  calculateCoordinateMarchTime
 } from "./helpers.js";
 import { t, targetLabel } from "./i18n.js";
 
@@ -38,64 +40,53 @@ export function createRallyCreator(app, type, number, hooks) {
   const isEnemy = type === "enemy";
 
   rally.innerHTML = `
-    <div class="rally-header">
-      <div class="header-left">
-        <span class="drag-handle">::</span>
-        <input type="text" value="${defaultName}">
+    <div class="rally-row">
+      <div class="col col-enable">
+        <label class="enable-wrap">
+          <input type="checkbox" class="enable-toggle" checked>
+          <span class="enable-dot"></span>
+        </label>
       </div>
-      <div class="header-right">
-        <button class="delete">x</button>
+      <div class="col col-name">
+        <input type="text" class="rally-name" value="${defaultName}">
+        <input type="text" class="coordinates" placeholder="x,y" data-i18n-placeholder="coordinatesPlaceholder">
       </div>
-    </div>
-
-    <div class="rally-content">
-      <div class="buffer-row">
+      <div class="col col-formation">
+        <select class="formation-select" aria-label="Formation">
+          <option value="" data-i18n="formationNone">-</option>
+          <option value="60/40">60/40</option>
+          <option value="50/20/30">50/20/30</option>
+          <option value="60/0/40">60/0/40</option>
+          <option value="60/10/30">60/10/30</option>
+          <option value="custom" data-i18n="formationCustom">custom</option>
+        </select>
+        <input type="text" class="formation-custom hidden" placeholder="formation..." data-i18n-placeholder="formationCustomPlaceholder">
+        ${isEnemy ? `
+        <button type="button" class="choose-enemy-allies" data-i18n="chooseEnemyAllies">Choose allies for counter</button>
+        <div class="enemy-allies-summary"></div>
+        ` : ""}
+      </div>
+      <div class="t-grid">
+        ${TARGETS.map(name => createTBox(name, !isEnemy)).join("")}
+      </div>
+      <div class="col col-buffer">
         ${isEnemy ? `
         <span class="enemy-fixed-buffer"><span data-i18n="bufferLabel">Buffer (sec)</span>: 0</span>
         ` : `
         <label class="buffer-label">
-          <span data-i18n="bufferLabel">Buffer (sec)</span>
           <input type="number" class="buffer" min="0" value="0">
+          <span data-i18n="bufferLabel">Buffer (sec)</span>
         </label>
-        <button type="button" class="set-global-buffer" data-i18n="setGlobalBuffer">Set global</button>
+        <label class="pet-toggle"><input type="checkbox" class="pets-toggle"><span>Pets</span><small class="pets-status">Off</small></label>
+        <details class="pets-settings"><summary>Settings</summary><label>Hours<input class="pets-duration" type="number" min="0.01" step="0.01" value="2"></label><label>Bonus %<input class="pets-bonus" type="number" min="0" step="1" value="30"></label><label>Remaining<input class="pets-countdown" value="02:00:00" inputmode="numeric"></label></details>
         <label class="counter-toggle">
           <input type="checkbox" class="counter-master" checked>
           <span data-i18n="counterRally">Counter rally</span>
         </label>
         `}
       </div>
-      <div class="rally-meta-row">
-        <label class="coordinates-label">
-          <span data-i18n="coordinatesLabel">Coordinates</span>
-          <input type="text" class="coordinates" placeholder="x,y" data-i18n-placeholder="coordinatesPlaceholder">
-        </label>
-        <label class="formation-label">
-          <span data-i18n="formationsLabel">Formations</span>
-          <select class="formation-select">
-            <option value="" data-i18n="formationNone">-</option>
-            <option value="60/40">60/40</option>
-            <option value="50/20/30">50/20/30</option>
-            <option value="60/0/40">60/0/40</option>
-            <option value="60/10/30">60/10/30</option>
-            <option value="custom" data-i18n="formationCustom">custom</option>
-          </select>
-          <input type="text" class="formation-custom hidden" placeholder="formation..." data-i18n-placeholder="formationCustomPlaceholder">
-        </label>
-      </div>
-      ${isEnemy ? `
-      <div class="enemy-allies">
-        <div class="enemy-allies-label" data-i18n="enemyAllies">Enemy allies</div>
-        <button type="button" class="choose-enemy-allies" data-i18n="chooseEnemyAllies">Choose allies for counter</button>
-        <div class="enemy-allies-summary"></div>
-      </div>
-      ` : ""}
-      <div class="march-times-row">
-        <button type="button" class="open-march-times" data-i18n="marchTimes">March times</button>
-      </div>
-      <div class="march-times-source hidden">
-        <div class="t-grid">
-          ${TARGETS.map(name => createTBox(name, !isEnemy)).join("")}
-        </div>
+      <div class="col col-actions">
+        <button class="delete" type="button" aria-label="Delete">x</button>
       </div>
     </div>
   `;
@@ -108,37 +99,25 @@ export function createRallyCreator(app, type, number, hooks) {
     hooks.onUpdateList();
   });
 
-  const headerLeft = rally.querySelector(".header-left");
-  const headerRight = rally.querySelector(".header-right");
-  const nameInput = rally.querySelector(".rally-header input");
-  const setGlobalBtn = rally.querySelector(".set-global-buffer");
+  const nameInput = rally.querySelector(".rally-name");
+  const enableToggle = rally.querySelector(".enable-toggle");
 
-  headerLeft.addEventListener("click", e => {
-    e.stopPropagation();
-    hooks.openOnly(app, rally, type);
-    nameInput.focus();
-    nameInput.select();
-  });
+  if (nameInput) {
+    nameInput.addEventListener("input", hooks.onUpdateList);
+  }
 
-  headerRight.addEventListener("click", e => {
-    e.stopPropagation();
-    hooks.openOnly(app, rally, type);
-  });
-
-  nameInput.addEventListener("input", hooks.onUpdateList);
-
-  hooks.enableDrag(app, rally, app.containers[type], hooks.onUpdateList);
-
-  if (setGlobalBtn && hooks.onSetGlobalBuffer) {
-    setGlobalBtn.addEventListener("click", e => {
-      e.stopPropagation();
-      hooks.onSetGlobalBuffer(rally);
+  if (enableToggle) {
+    enableToggle.addEventListener("change", () => {
+      setRallyEnabled(rally, enableToggle.checked);
+      hooks.onUpdateList();
     });
   }
 
+  hooks.enableDrag(app, rally, app.containers[type], hooks.onUpdateList);
+
   setupCounterControls(rally);
   initFormationControls(rally);
-  initMarchTimesControls(rally);
+  if (!isEnemy) initPetsControls(rally);
   if (isEnemy) {
     initEnemyAlliesControls(app, rally);
   }
@@ -146,8 +125,73 @@ export function createRallyCreator(app, type, number, hooks) {
   return rally;
 }
 
+export function refreshCoordinateMarchTimes(rally, force = false) {
+  if (!rally || rally.dataset.type === "enemy") return;
+  const pets = getPetsState(rally);
+  TARGETS.forEach(target => {
+    const input = rally.querySelector(`.t-box[data-name="${target}"] .sec`);
+    if (!input || (input.dataset.manual === "true" && !force)) return;
+    const seconds = calculateCoordinateMarchTime(getRallyCoordinates(rally), target, pets.active ? pets.bonus : 0);
+    if (seconds === null) return;
+    input.value = seconds;
+    input.dataset.manual = "false";
+  });
+}
+
+export function refreshPets(rally) {
+  if (!rally || rally.dataset.type === "enemy") return;
+  const wasActive = rally.dataset.petsActive === "true";
+  const state = getPetsState(rally);
+  const toggle = rally.querySelector(".pets-toggle");
+  const status = rally.querySelector(".pets-status");
+  const countdown = rally.querySelector(".pets-countdown");
+  if (toggle) toggle.checked = state.active;
+  if (status) status.textContent = state.active ? formatCountdown(state.until - Date.now()) : "Off";
+  if (countdown && document.activeElement !== countdown) countdown.value = state.active ? formatCountdown(state.until - Date.now()) : "00:00:00";
+  rally.dataset.petsActive = state.active ? "true" : "false";
+  if (wasActive !== state.active) refreshCoordinateMarchTimes(rally, true);
+}
+
+function initPetsControls(rally) {
+  const toggle = rally.querySelector(".pets-toggle");
+  const duration = rally.querySelector(".pets-duration");
+  const bonus = rally.querySelector(".pets-bonus");
+  const countdown = rally.querySelector(".pets-countdown");
+  if (!toggle || !duration || !bonus || !countdown) return;
+  toggle.addEventListener("change", () => {
+    rally.dataset.petsUntil = toggle.checked ? String(Date.now() + Number(duration.value || 0) * 3600000) : "";
+    refreshPets(rally); refreshCoordinateMarchTimes(rally, true);
+    rally.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  bonus.addEventListener("input", () => refreshCoordinateMarchTimes(rally, true));
+  countdown.addEventListener("change", () => {
+    const seconds = parseCountdown(countdown.value);
+    if (seconds === null) { refreshPets(rally); return; }
+    rally.dataset.petsUntil = seconds ? String(Date.now() + seconds * 1000) : "";
+    refreshPets(rally); refreshCoordinateMarchTimes(rally, true);
+    rally.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  rally.querySelector(".coordinates")?.addEventListener("input", () => refreshCoordinateMarchTimes(rally, true));
+  rally.querySelectorAll(".t-box .sec").forEach(input => input.addEventListener("input", () => { input.dataset.manual = "true"; }));
+  refreshPets(rally);
+}
+
+function getPetsState(rally) {
+  const until = Number(rally.dataset.petsUntil) || 0;
+  return { until, active: until > Date.now(), bonus: Number(rally.querySelector(".pets-bonus")?.value || 0) };
+}
+
+function parseCountdown(value) {
+  const match = /^(\d{1,3}):([0-5]\d):([0-5]\d)$/.exec(String(value).trim());
+  return match ? Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3]) : null;
+}
+
+function formatCountdown(milliseconds) {
+  const total = Math.max(0, Math.ceil(milliseconds / 1000));
+  return [Math.floor(total / 3600), Math.floor(total % 3600 / 60), total % 60].map(value => String(value).padStart(2, "0")).join(":");
+}
+
 export function createTBox(name, showCounterCheck = true) {
-  const label = targetLabel(name);
   const counterHtml = showCounterCheck
     ? `
       <label class="counter-check-row">
@@ -157,15 +201,7 @@ export function createTBox(name, showCounterCheck = true) {
     : "";
   return `
     <div class="t-box" data-name="${name}">
-      <strong data-i18n="${getTargetKey(name)}">${label}</strong>
-      <div class="time-field">
-        <span class="time-label" data-i18n="minLabel">min</span>
-        <input type="number" class="min" min="0" value="0" placeholder="min" data-i18n-placeholder="minLabel" aria-label="minutes">
-      </div>
-      <div class="time-field">
-        <span class="time-label" data-i18n="secLabel">sec</span>
-        <input type="number" class="sec" min="0" value="0" placeholder="sec" data-i18n-placeholder="secLabel" aria-label="seconds">
-      </div>
+      <input type="number" class="sec" min="0" value="0" placeholder="sec" data-i18n-placeholder="secLabel" aria-label="seconds">
       ${counterHtml}
     </div>
   `;
@@ -436,11 +472,8 @@ function copyGridValues(fromGrid, toGrid) {
     const toBox = toGrid.querySelector(`.t-box[data-name="${target}"]`);
     if (!fromBox || !toBox) return;
 
-    const fromMin = fromBox.querySelector(".min");
-    const toMin = toBox.querySelector(".min");
     const fromSec = fromBox.querySelector(".sec");
     const toSec = toBox.querySelector(".sec");
-    if (fromMin && toMin) toMin.value = fromMin.value;
     if (fromSec && toSec) toSec.value = fromSec.value;
 
     const fromCheck = fromBox.querySelector(".counter-check");

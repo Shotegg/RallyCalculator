@@ -4,20 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rally Helper</title>
-  <link rel="stylesheet" href="style.css?v=20260303">
+  <link rel="stylesheet" href="style.css?v=20261106">
 </head>
 <body>
-
-<h1 data-i18n="appTitle">Rally Helper</h1>
-
-<div class="layout">
-
-  <!-- LEFT -->
-  <div class="left">
-
-    <div class="top-controls">
-      <button id="addRally" data-i18n="addRally">Add Rally Creator</button>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <h1 data-i18n="appTitle">Rally Helper</h1>
+      <span class="brand-version">v2.4</span>
+    </div>
+    <div class="topbar-search">
       <input id="search" data-i18n-placeholder="searchPlaceholder" placeholder="Search Rally Creator...">
+      <button id="toggleFindReplace" type="button" class="icon-button" aria-controls="findReplacePanel" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M4 20h4.5L19 9.5 14.5 5 4 15.5V20Z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M13.5 6l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        <span class="sr-only" data-i18n="findReplaceToggle">Find & Replace</span>
+      </button>
+    </div>
+    <div class="topbar-actions">
       <label class="lang-select">
         <span data-i18n="language">Language</span>
         <select id="langSelect" aria-label="Language">
@@ -27,83 +33,95 @@
           <option value="zh-Hant" label="繁體中文">🇹🇼</option>
         </select>
       </label>
-    </div>
-
-    <div class="tabs-row">
-      <div class="tabs">
-        <button class="tab active" data-type="ally" data-i18n="tabAlly">Ally</button>
-        <button class="tab" data-type="enemy" data-i18n="tabEnemy">Enemy</button>
-      </div>
-      <div class="tab-actions">
-        <button id="toggleFindReplace" type="button" class="icon-button" aria-controls="findReplacePanel" aria-expanded="false">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M4 20h4.5L19 9.5 14.5 5 4 15.5V20Z" fill="none" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M13.5 6l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
-          </svg>
-          <span class="sr-only" data-i18n="findReplaceToggle">Find & Replace</span>
-        </button>
-        <button id="toggleCards" type="button" class="icon-button" aria-controls="allyContainer enemyContainer" aria-expanded="true">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M6 14l6-6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <span class="sr-only" data-i18n="toggleCards">Toggle cards</span>
-        </button>
+      <div class="topbar-icons">
         <button id="importData" type="button" data-i18n="import">Import</button>
         <button id="exportData" type="button" data-i18n="export">Export</button>
       </div>
+      <button id="addRally" class="primary" data-i18n="addRally">Add Rally Creator</button>
     </div>
-    <div id="findReplacePanel" class="find-replace">
-      <label>
-        <span data-i18n="findLabel">Find</span>
-        <input id="findInput" data-i18n-placeholder="findPlaceholder" placeholder="Find name...">
-      </label>
-      <label>
-        <span data-i18n="replaceLabel">Replace</span>
-        <input id="replaceInput" data-i18n-placeholder="replacePlaceholder" placeholder="Replace with...">
-      </label>
-      <div class="find-actions">
-        <button id="findNext" type="button" data-i18n="findNext">Find</button>
-        <button id="replaceOne" type="button" data-i18n="replaceOne">Replace</button>
-        <button id="replaceAll" type="button" data-i18n="replaceAll">Replace All</button>
+  </header>
+
+  <div id="findReplacePanel" class="find-replace">
+    <label>
+      <span data-i18n="findLabel">Find</span>
+      <input id="findInput" data-i18n-placeholder="findPlaceholder" placeholder="Find name...">
+    </label>
+    <label>
+      <span data-i18n="replaceLabel">Replace</span>
+      <input id="replaceInput" data-i18n-placeholder="replacePlaceholder" placeholder="Replace with...">
+    </label>
+    <div class="find-actions">
+      <button id="findNext" type="button" data-i18n="findNext">Find</button>
+      <button id="replaceOne" type="button" data-i18n="replaceOne">Replace</button>
+      <button id="replaceAll" type="button" data-i18n="replaceAll">Replace All</button>
+    </div>
+  </div>
+  <input type="file" id="importFile" class="import-file" accept="application/json">
+
+  <div class="layout">
+    <div class="left">
+      <div class="tabs-row">
+        <div class="tabs">
+          <button class="tab active" data-type="ally" data-i18n="tabAlly">Ally</button>
+          <button class="tab" data-type="enemy" data-i18n="tabEnemy">Enemy</button>
+        </div>
+      </div>
+      <div class="table-head">
+        <div>EN</div>
+        <div>Name / Coords</div>
+        <div>Formation</div>
+        <div>S</div>
+        <div>W</div>
+        <div>E</div>
+        <div>N</div>
+        <div>C</div>
+        <div>Buff</div>
+        <div>Actions</div>
+      </div>
+      <div class="rally-table">
+        <div id="allyContainer" class="rally-container ally"></div>
+        <div id="enemyContainer" class="rally-container enemy hidden"></div>
       </div>
     </div>
-    <input type="file" id="importFile" class="import-file" accept="application/json">
 
-    <div id="allyContainer" class="rally-container ally"></div>
-    <div id="enemyContainer" class="rally-container enemy hidden"></div>
+    <aside class="right">
+      <section class="panel">
+        <div class="panel-title">Current UTC Time</div>
+        <div id="utcClock" class="utc-clock" aria-live="polite">00:00:00 UTC</div>
+      </section>
 
+      <section class="panel">
+        <div class="panel-title">Calculation Configuration</div>
+        <div class="target-filter">
+          <span data-i18n="filterByTarget">Filter by target</span>
+          <button id="sortTargets" type="button" data-i18n="sortTargets">Sort</button>
+          <select id="targetSortSelect" aria-label="Filter by target"></select>
+        </div>
+        <div class="calculate-row">
+          <label class="calculate-filter">
+            <span data-i18n="calculateTarget">Target</span>
+            <select id="calculateTargetSelect" aria-label="Calculate target"></select>
+          </label>
+          <button id="calculate" class="primary" data-i18n="calculate">Calculate</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title-row">
+          <span data-i18n="resultTitle">Result (UTC)</span>
+          <button id="copyResult" type="button" data-i18n="copy">Copy</button>
+        </div>
+        <pre id="resultBox"></pre>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title" data-i18n="listTitle">Rally Creators & Targets</div>
+        <div id="rallyList"></div>
+      </section>
+    </aside>
   </div>
-
-  <!-- RIGHT -->
-  <div class="right">
-    <h3 data-i18n="listTitle">Rally Creators & Targets</h3>
-    <div class="target-filter">
-      <span data-i18n="filterByTarget">Filter by target</span>
-      <button id="sortTargets" type="button" data-i18n="sortTargets">Sort</button>
-      <select id="targetSortSelect" aria-label="Filter by target"></select>
-    </div>
-    <div id="rallyList"></div>
-
-    <div class="calculate-row">
-      <button id="calculate" data-i18n="calculate">Calculate</button>
-      <label class="calculate-filter">
-        <span data-i18n="calculateTarget">Target</span>
-        <select id="calculateTargetSelect" aria-label="Calculate target"></select>
-      </label>
-    </div>
-
-    <div class="result-header">
-      <div class="result-title-row">
-        <h3 data-i18n="resultTitle">Result (UTC)</h3>
-        <span id="utcClock" class="utc-clock" aria-live="polite">00:00:00 UTC</span>
-      </div>
-      <button id="copyResult" type="button" data-i18n="copy">Copy</button>
-    </div>
-    <pre id="resultBox"></pre>
-  </div>
-
 </div>
 
-<script type="module" src="script.js?v=20260303"></script>
+<script type="module" src="script.js?v=20261106"></script>
 </body>
 </html>
