@@ -1,5 +1,25 @@
 export const TARGETS = ["Turret 1", "Turret 2", "Turret 3", "Turret 4", "Castle"];
 export const NO_TARGET = "No target";
+export const TARGET_COORDINATES = {
+  "Turret 1": { x: 594, y: 594, size: 2 },
+  "Turret 2": { x: 594, y: 604, size: 2 },
+  "Turret 3": { x: 604, y: 594, size: 2 },
+  "Turret 4": { x: 604, y: 604, size: 2 },
+  Castle: { x: 597, y: 597, size: 6 }
+};
+
+export function calculateCoordinateMarchTime(coordinates, target, petBonus = 0) {
+  const match = String(coordinates || "").match(/^\s*(\d+)\s*,\s*(\d+)\s*$/);
+  const destination = TARGET_COORDINATES[target];
+  if (!match || !destination) return null;
+
+  const sourceX = Number(match[1]) + 1;
+  const sourceY = Number(match[2]) + 1;
+  const destinationOffset = destination.size / 2;
+  const distance = Math.hypot(destination.x + destinationOffset - sourceX, destination.y + destinationOffset - sourceY);
+  const speedBuff = 1 + (25 + Number(petBonus || 0)) / 100;
+  return Math.ceil(5 + distance * 1300 / (1300 + distance) * 60 / (11 * speedBuff));
+}
 
 export function formatUTC(d) {
   return [d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds()]
@@ -8,7 +28,7 @@ export function formatUTC(d) {
 }
 
 export function getRallyName(rally) {
-  return rally.querySelector(".rally-header input").value;
+  return rally.querySelector(".rally-name")?.value || "";
 }
 
 export function getRallyTarget(rally) {
@@ -17,6 +37,10 @@ export function getRallyTarget(rally) {
 
 export function setRallyTarget(rally, target) {
   rally.dataset.target = target;
+  const select = rally.querySelector(".target-select");
+  if (select) {
+    select.value = target;
+  }
 }
 
 export function isRallyEnabled(rally) {
@@ -25,6 +49,10 @@ export function isRallyEnabled(rally) {
 
 export function setRallyEnabled(rally, enabled) {
   rally.dataset.enabled = enabled ? "true" : "false";
+  const toggle = rally.querySelector(".enable-toggle");
+  if (toggle) {
+    toggle.checked = Boolean(enabled);
+  }
 }
 
 export function getRallyBuffer(rally) {
